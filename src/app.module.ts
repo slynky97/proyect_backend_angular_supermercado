@@ -23,7 +23,7 @@ import { ClienteModule } from './modules/admin/cliente/cliente.module';
       username: process.env.DATABASE_USER || 'postgres',
       password: process.env.DATABASE_pASSWORD || '12345',
       database: process.env.DATABASE_NAME || 'backend_nest_inventario',
-      entities: [  
+      entities: [
         __dirname + '/../**/*.entity{.ts,.js}',
       ],
       synchronize: false,
@@ -39,4 +39,4 @@ import { ClienteModule } from './modules/admin/cliente/cliente.module';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }

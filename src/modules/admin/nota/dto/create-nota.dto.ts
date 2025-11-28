@@ -37,7 +37,8 @@ export class CreateNotaDto {
 
     @ApiProperty()
     @IsNumber()
-    cliente: number;
+    @IsOptional()
+    cliente?: number;
 
     @ApiProperty()
     @IsString()
@@ -66,13 +67,15 @@ class MovimientoDto{
     @IsString()
     tipo_movimiento: 'ingreso' | 'salida' | 'devolucion';
 
-    @ApiProperty()
+    @ApiProperty({required: false})
     @IsDecimal()
-    precio_unitario_compra: number;
+    @IsOptional()
+    precio_unitario_compra?: number;
 
-    @ApiProperty()
+    @ApiProperty({required: false})
     @IsDecimal()
-    precio_unitario_venta: number;
+    @IsOptional()
+    precio_unitario_venta?: number;
 
     @ApiProperty()
     @IsDecimal()

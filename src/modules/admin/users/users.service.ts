@@ -15,20 +15,20 @@ export class UsersService {
     private userRepository: Repository<User>,
     @InjectRepository(Role)
     private roleRepository: Repository<Role>,
-  ){
+  ) {
 
   }
 
   async create(createUserDto: CreateUserDto) {
     console.log("Guardando en servicio .... ", createUserDto);
 
-    const existeName = await this.userRepository.findOne({where: {name: createUserDto.name}})
+    const existeName = await this.userRepository.findOne({ where: { name: createUserDto.name } })
 
     if (existeName) {
       throw new BadRequestException(`El nombre ${createUserDto.name} ya esta en uso`);
     }
 
-    const existeEmail = await this.userRepository.findOne({where: {email: createUserDto.email}})
+    const existeEmail = await this.userRepository.findOne({ where: { email: createUserDto.email } })
 
     if (existeEmail) {
       throw new BadRequestException(`El email ${createUserDto.email} ya esta en uso`);
@@ -38,9 +38,9 @@ export class UsersService {
 
     // roles
     let roles: Role[] = [];
-    if(createUserDto.roleIds?.length){
-      roles = await this.roleRepository.find({where: {id: In(createUserDto.roleIds)}})
-      if(roles.length !== createUserDto.roleIds.length){
+    if (createUserDto.roleIds?.length) {
+      roles = await this.roleRepository.find({ where: { id: In(createUserDto.roleIds) } })
+      if (roles.length !== createUserDto.roleIds.length) {
         throw new BadRequestException('Uno o mas roleIds no son validos')
       }
     }
@@ -67,7 +67,7 @@ export class UsersService {
   }
 
   async findOne(id: string) {
-    const user = await this.userRepository.findOneBy({id});
+    const user = await this.userRepository.findOneBy({ id });
 
     if (!user) throw new NotFoundException('El usuario no existe');
 
@@ -76,7 +76,7 @@ export class UsersService {
 
 
   async findOneByEmail(email: string) {
-    const user = await this.userRepository.findOneBy({email});
+    const user = await this.userRepository.findOneBy({ email });
 
     if (!user) throw new NotFoundException(`El usuario con email: ${email} no existe`);
 
@@ -85,10 +85,28 @@ export class UsersService {
 
 
   async update(id: string, updateUserDto: UpdateUserDto) {
-
     const user = await this.findOne(id);
-    this.userRepository.merge(user, updateUserDto);
 
+    // Handle roles update
+    if (updateUserDto.roleIds) {
+      const roles = await this.roleRepository.find({
+        where: { id: In(updateUserDto.roleIds) }
+      });
+
+      if (roles.length !== updateUserDto.roleIds.length) {
+        throw new BadRequestException('Uno o mas roleIds no son validos');
+      }
+
+      user.roles = roles;
+      delete updateUserDto.roleIds;
+    }
+
+    // Handle password update
+    if (updateUserDto.password) {
+      updateUserDto.password = await bcrypt.hash(updateUserDto.password, 12);
+    }
+
+    this.userRepository.merge(user, updateUserDto);
     return this.userRepository.save(user);
   }
 

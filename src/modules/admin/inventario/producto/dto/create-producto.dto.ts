@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsBoolean, IsDecimal, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength } from "class-validator";
+import { IsBoolean, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, MaxLength } from "class-validator";
 
 export class CreateProductoDto {
 
@@ -9,12 +9,12 @@ export class CreateProductoDto {
     @IsNotEmpty()
     nombre: string;
 
-    @ApiProperty({nullable: true, required: false})
+    @ApiProperty({ nullable: true, required: false })
     @IsString()
     @IsOptional()
     descripcion?: string;
 
-    @ApiProperty({nullable: true})
+    @ApiProperty({ nullable: true })
     @IsString()
     @MaxLength(100)
     @IsOptional()
@@ -32,8 +32,8 @@ export class CreateProductoDto {
     @IsOptional()
     marca?: string;
 
-    @ApiProperty({type: "string", default: "0.00"})
-    @IsDecimal()
+    @ApiProperty({ type: "number", default: 0 })
+    @IsNumber()
     precio_venta_actual: number;
 
     @ApiProperty()
@@ -42,7 +42,7 @@ export class CreateProductoDto {
     @IsOptional()
     imagen?: string;
 
-    @ApiProperty({type: 'boolean'})
+    @ApiProperty({ type: 'boolean' })
     @IsBoolean()
     estado: boolean;
 

@@ -11,27 +11,27 @@ export class Movimiento {
     @ManyToOne(() => Nota, nota => nota.movimientos)
     nota: Nota;
 
-    @ManyToOne(() => Producto, {eager: true})
+    @ManyToOne(() => Producto, { eager: true })
     producto: Producto;
 
-    @ManyToOne(() => Almacen, {eager: true})
+    @ManyToOne(() => Almacen, { eager: true })
     almacen: Almacen;
 
-    @Column({type: 'int'})
+    @Column({ type: 'int' })
     cantidad: number;
 
-    @Column({type: 'varchar', precision: 20})
+    @Column({ type: 'varchar', precision: 20, nullable: true })
     tipo_movimiento: 'ingreso' | 'salida' | 'devolucion';
 
-    @Column({type: 'decimal', precision: 12, scale: 2})
-    precio_unitario_compra: number;
+    @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+    precio_unitario_compra?: number;
 
-    @Column({type: 'decimal', precision: 12, scale: 2})
-    precio_unitario_venta: number;
+    @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+    precio_unitario_venta?: number;
 
-    @Column({type: 'decimal', precision: 12, scale: 2})
+    @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
     total_calculado;
 
-    @Column({type: 'text', nullable: true})
+    @Column({ type: 'text', nullable: true })
     observaciones: string;
 }

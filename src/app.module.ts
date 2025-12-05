@@ -10,6 +10,7 @@ import { PermissionsModule } from './modules/admin/permissions/permissions.modul
 import { ConfigModule } from '@nestjs/config';
 import { NotaModule } from './modules/admin/nota/nota.module';
 import { ClienteModule } from './modules/admin/cliente/cliente.module';
+import { AnalyticsModule } from './modules/admin/analytics/analytics.module';
 
 @Module({
   imports: [
@@ -26,7 +27,7 @@ import { ClienteModule } from './modules/admin/cliente/cliente.module';
       entities: [
         __dirname + '/../**/*.entity{.ts,.js}',
       ],
-      synchronize: false,
+      synchronize: true,
     }),
     UsersModule,
     AuthModule,
@@ -35,6 +36,7 @@ import { ClienteModule } from './modules/admin/cliente/cliente.module';
     RolesModule,
     NotaModule,
     ClienteModule,
+    AnalyticsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

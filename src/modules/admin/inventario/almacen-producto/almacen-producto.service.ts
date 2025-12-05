@@ -1,11 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { AlmacenProducto } from '../almacen/entities/almacen_producto.entity';
 import { CreateAlmacenProductoDto } from './dto/create-almacen-producto.dto';
 import { UpdateAlmacenProductoDto } from './dto/update-almacen-producto.dto';
 import { Almacen } from '../almacen/entities/almacen.entity';
 import { Producto } from '../producto/entities/producto.entity';
+import { Nota } from '../../nota/entities/nota.entity';
+import { Movimiento } from '../../nota/entities/movimiento.entity';
+import { User } from '../../users/entities/user.entity';
 
 @Injectable()
 export class AlmacenProductoService {
@@ -16,6 +19,8 @@ export class AlmacenProductoService {
         private readonly almacenRepository: Repository<Almacen>,
         @InjectRepository(Producto)
         private readonly productoRepository: Repository<Producto>,
+        @InjectDataSource()
+        private readonly dataSource: DataSource,
     ) { }
 
     async create(createDto: CreateAlmacenProductoDto): Promise<AlmacenProducto> {
@@ -75,7 +80,7 @@ export class AlmacenProductoService {
         });
     }
 
-    async update(id: number, updateDto: UpdateAlmacenProductoDto): Promise<AlmacenProducto> {
+    async update(id: number, updateDto: UpdateAlmacenProductoDto, userId?: string): Promise<AlmacenProducto> {
         const almacenProducto = await this.findOne(id);
 
         // Update almacen if provided

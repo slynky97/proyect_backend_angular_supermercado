@@ -12,7 +12,7 @@ export class CreateNotaDto {
     tipo_nota: string; // 'compra' || 'venta'
 
 
-    @ApiProperty({required: true})
+    @ApiProperty({ required: true })
     @IsDecimal()
     @IsOptional()
     impuestos?: number;
@@ -42,7 +42,7 @@ export class CreateNotaDto {
 
     @ApiProperty()
     @IsString()
-    @IsUUID('4', {each: true})
+    @IsUUID('4', { each: true })
     user: string;
 
     @ApiProperty()
@@ -50,7 +50,7 @@ export class CreateNotaDto {
     movimientos: MovimientoDto[];
 }
 
-class MovimientoDto{
+class MovimientoDto {
     @ApiProperty()
     @IsNumber()
     producto_id: number;
@@ -67,12 +67,12 @@ class MovimientoDto{
     @IsString()
     tipo_movimiento: 'ingreso' | 'salida' | 'devolucion';
 
-    @ApiProperty({required: false})
+    @ApiProperty({ required: false })
     @IsDecimal()
     @IsOptional()
     precio_unitario_compra?: number;
 
-    @ApiProperty({required: false})
+    @ApiProperty({ required: false })
     @IsDecimal()
     @IsOptional()
     precio_unitario_venta?: number;

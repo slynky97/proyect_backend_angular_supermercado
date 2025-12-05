@@ -8,12 +8,13 @@ async function bootstrap() {
 
   // habilitando CORS
   app.enableCors();
-  
+
   // clas-validator
   app.useGlobalPipes(new ValidationPipe({
     disableErrorMessages: false,
     whitelist: true,
     forbidNonWhitelisted: true,
+    transform: true,
   }));
 
   // Swagger
@@ -25,7 +26,7 @@ async function bootstrap() {
     .setVersion('1.0')
     .addTag('node')
     .build();
-    
+
   const documentFactory = () => SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, documentFactory);
 

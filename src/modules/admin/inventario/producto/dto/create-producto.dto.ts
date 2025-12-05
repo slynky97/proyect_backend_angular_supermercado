@@ -36,6 +36,11 @@ export class CreateProductoDto {
     @IsNumber()
     precio_venta_actual: number;
 
+    @ApiProperty({ type: "number", default: 0, nullable: true })
+    @IsNumber()
+    @IsOptional()
+    precio_unitario_compra?: number;
+
     @ApiProperty()
     @IsString()
     @MaxLength(255)

@@ -9,16 +9,18 @@ import { Nota } from './entities/nota.entity';
 import { Producto } from '../inventario/producto/entities/producto.entity';
 import { Almacen } from '../inventario/almacen/entities/almacen.entity';
 import { Movimiento } from './entities/movimiento.entity';
-import { QueryRunner } from 'typeorm/browser';
+import { QueryRunner } from 'typeorm';
 import { AlmacenProducto } from '../inventario/almacen/entities/almacen_producto.entity';
 import { FindNotaDto } from './dto/find-nota-dto';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class NotaService {
 
   constructor(
     @InjectDataSource()
-    private readonly dataSource: DataSource
+    private readonly dataSource: DataSource,
+    private readonly emailService: EmailService
   ) {
 
   }
@@ -84,6 +86,13 @@ export class NotaService {
       nota.movimientos = movimientosGuardados;
       await queryRunner.commitTransaction();
 
+      // Send Email Alert (Fire and forget)
+      if (createNotaDto.tipo_nota === 'venta') {
+        const total = parseFloat(nota.total_calculado.toString());
+        const itemsCount = nota.movimientos.length;
+        this.emailService.sendNewSaleAlert(nota.id, total, itemsCount).catch(err => console.error('Failed to send sale alert', err));
+      }
+
       return nota;
 
     } catch (error) {
@@ -92,8 +101,6 @@ export class NotaService {
     } finally {
       await queryRunner.release()
     }
-
-    return 'This action adds a new nota';
   }
 
   private async actualizarStock(queryRunner: QueryRunner, almacen: Almacen, producto: Producto, cantidad: number, tipo: 'ingreso' | 'salida' | 'devolucion') {
@@ -126,6 +133,11 @@ export class NotaService {
       ap.fecha_actualizacion = new Date()
     }
     await almacenProductoRep.save(ap);
+
+    // Check for low stock alert
+    if (ap.cantidad_actual <= 10) {
+      this.emailService.sendLowStockAlert(producto.nombre, ap.cantidad_actual).catch(err => console.error('Failed to send low stock alert', err));
+    }
 
   }
 

@@ -11,9 +11,13 @@ import { ConfigModule } from '@nestjs/config';
 import { NotaModule } from './modules/admin/nota/nota.module';
 import { ClienteModule } from './modules/admin/cliente/cliente.module';
 import { AnalyticsModule } from './modules/admin/analytics/analytics.module';
+import { EmailModule } from './modules/admin/email/email.module';
+
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     ConfigModule.forRoot({
       envFilePath: ['.development.env', '.production.env'],
     }),
@@ -37,6 +41,7 @@ import { AnalyticsModule } from './modules/admin/analytics/analytics.module';
     NotaModule,
     ClienteModule,
     AnalyticsModule,
+    EmailModule,
   ],
   controllers: [AppController],
   providers: [AppService],

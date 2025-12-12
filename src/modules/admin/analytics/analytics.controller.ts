@@ -51,4 +51,17 @@ export class AnalyticsController {
         return this.analyticsService.getTopProductsByDateRange(startDate, endDate);
     }
 
+    @Get('stockout-prediction')
+    getStockoutPrediction(@Query('days') days: number) {
+        return this.analyticsService.getStockoutPrediction(days ? Number(days) : 30);
+    }
+    @Get('product-history')
+    getProductSalesHistory(
+        @Query('productId') productId: number,
+        @Query('startDate') startDate: string,
+        @Query('endDate') endDate: string
+    ) {
+        // Validate inputs or let service handle parsing (Service handles parsing)
+        return this.analyticsService.getProductSalesHistory(Number(productId), new Date(startDate), new Date(endDate));
+    }
 }

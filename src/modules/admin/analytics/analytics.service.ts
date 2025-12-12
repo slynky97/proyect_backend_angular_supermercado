@@ -343,4 +343,128 @@ export class AnalyticsService {
     }
 
 
+    async getStockoutPrediction(daysToAnalyze: number = 30) {
+        // 1. Get sales for the last X days per product
+        const endDate = new Date();
+        const startDate = subDays(endDate, daysToAnalyze);
+
+        // DEBUG: First check total count of 'salida' movements regardless of date
+        const totalSalidas = await this.movimientoRepository.count({ where: { tipo_movimiento: 'salida' } });
+        console.log('DEBUG: Total movements (salida) in DB:', totalSalidas);
+
+        const salesStats = await this.movimientoRepository
+            .createQueryBuilder('m')
+            .leftJoin('m.nota', 'n')
+            .select('m.productoId', 'productId')
+            .addSelect('SUM(m.cantidad)', 'totalSold')
+            //.where('m.tipo_movimiento = :type', { type: 'salida' }) // Assuming 'salida' is physically stored in DB
+            // Let's rely on Nota type 'venta' which is safer if Movimiento type is inconsistent
+            .where('n.tipo_nota = :tipoNota', { tipoNota: 'venta' })
+            .andWhere('n.fecha BETWEEN :startDate AND :endDate', { startDate, endDate })
+            .andWhere('n.estado_nota != :estado', { estado: 'ANULADA' })
+            .groupBy('m.productoId')
+            .getRawMany();
+
+        // Map to quick lookup
+        const salesMap = new Map<number, number>();
+        salesStats.forEach(stat => {
+            salesMap.set(stat.productId, parseFloat(stat.totalSold) || 0);
+        });
+
+        // 2. Get current stock for all products (summing across warehouses if necessary, or just taking the total)
+        // Adjust based on your schema. Assuming AlmacenProducto holds stock per warehouse.
+        // We really want total stock available to sell.
+        const stockStats = await this.almacenProductoRepository
+            .createQueryBuilder('ap')
+            .leftJoinAndSelect('ap.producto', 'p')
+            .select('ap.productoId', 'productId')
+            .addSelect('p.nombre', 'productName')
+            .addSelect('p.imagen', 'productImage')
+            .addSelect('SUM(ap.cantidad_actual)', 'currentStock')
+            .groupBy('ap.productoId')
+            .addGroupBy('p.nombre')
+            .addGroupBy('p.imagen')
+            .having('SUM(ap.cantidad_actual) > 0') // Only analyze items we actually have
+            .getRawMany();
+
+        console.log('Prediction Debug:');
+        console.log('Date Range:', startDate, 'to', endDate);
+        console.log('Sales Found:', salesStats.length);
+        console.log('Stock Items Found:', stockStats.length);
+        if (salesStats.length > 0) console.log('Sample Sale:', salesStats[0]);
+
+        const predictions: {
+            productId: number;
+            productName: string;
+            productImage: string;
+            currentStock: number;
+            dailyVelocity: number;
+            daysLeft: number;
+            suggestedPurchase: number;
+        }[] = [];
+
+        for (const item of stockStats) {
+            const productId = item.productId;
+            const currentStock = parseFloat(item.currentStock);
+            const totalSold = salesMap.get(productId) || 0;
+
+            if (totalSold > 0) {
+                const dailyVelocity = totalSold / daysToAnalyze;
+                const daysLeft = currentStock / dailyVelocity;
+
+                // Calculate suggested purchase to cover 30 days
+                // Only suggest if we have less than 30 days coverage
+                const targetCoverageDays = 30;
+                let suggestedPurchase = 0;
+
+                if (daysLeft < targetCoverageDays) {
+                    const diffDays = targetCoverageDays - daysLeft;
+                    // Or simply: (Target - Current) -> (Velocity * TargetDays) - CurrentStock
+                    suggestedPurchase = Math.ceil((dailyVelocity * targetCoverageDays) - currentStock);
+                    if (suggestedPurchase < 0) suggestedPurchase = 0;
+                }
+
+                // Only care if it runs out relatively soon (e.g. within 60 days)
+                // if (daysLeft <= 60) {
+                predictions.push({
+                    productId,
+                    productName: item.productName,
+                    productImage: item.productImage,
+                    currentStock,
+                    dailyVelocity,
+                    daysLeft: Math.round(daysLeft),
+                    suggestedPurchase
+                });
+                // }
+            }
+        }
+
+        // 3. Sort by Risk (fewer days left = higher risk)
+        return predictions.sort((a, b) => a.daysLeft - b.daysLeft);
+    }
+    async getProductSalesHistory(productId: number, startDate: Date, endDate: Date) {
+        // Ensure dates are boundaries
+        const start = startOfDay(new Date(startDate));
+        const end = endOfDay(new Date(endDate));
+
+        const history = await this.movimientoRepository
+            .createQueryBuilder('m')
+            .leftJoin('m.nota', 'n')
+            .select('DATE(n.fecha)', 'date')
+            .addSelect('SUM(m.cantidad)', 'quantity')
+            .addSelect('SUM(m.total_calculado)', 'total')
+            .where('m.productoId = :productId', { productId })
+            .andWhere('n.fecha BETWEEN :start AND :end', { start, end })
+            .andWhere('n.tipo_nota = :tipo', { tipo: 'venta' })
+            .andWhere('n.estado_nota != :estado', { estado: 'ANULADA' })
+            .groupBy('DATE(n.fecha)')
+            .orderBy('DATE(n.fecha)', 'ASC')
+            .getRawMany();
+
+        return history.map(h => ({
+            date: format(new Date(h.date), 'yyyy-MM-dd'),
+            quantity: Number(h.quantity),
+            total: Number(h.total)
+        }));
+    }
 }

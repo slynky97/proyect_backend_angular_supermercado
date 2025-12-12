@@ -88,9 +88,7 @@ export class NotaService {
 
       // Send Email Alert (Fire and forget)
       if (createNotaDto.tipo_nota === 'venta') {
-        const total = parseFloat(nota.total_calculado.toString());
-        const itemsCount = nota.movimientos.length;
-        this.emailService.sendNewSaleAlert(nota.id, total, itemsCount).catch(err => console.error('Failed to send sale alert', err));
+        this.emailService.sendNewSaleAlert(nota).catch(err => console.error('Failed to send sale alert', err));
       }
 
       return nota;

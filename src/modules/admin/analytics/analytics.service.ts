@@ -467,4 +467,40 @@ export class AnalyticsService {
             total: Number(h.total)
         }));
     }
+
+    async getClientAnalytics(startDate: string, endDate: string, search: string = '') {
+        const start = startOfDay(new Date(startDate));
+        const end = endOfDay(new Date(endDate));
+
+        const query = this.notaRepository
+            .createQueryBuilder('nota')
+            .leftJoinAndSelect('nota.cliente', 'cliente')
+            .select('cliente.id', 'clientId')
+            .addSelect('MAX(cliente.razon_social)', 'clientName') // Use MAX to aggregate non-grouped columns or group by them
+            .addSelect('MAX(cliente.ci_nit_ruc_rut)', 'clientNit')
+            .addSelect('SUM(nota.total_calculado)', 'totalSpent')
+            .addSelect('COUNT(nota.id)', 'purchaseCount')
+            .where('nota.tipo_nota = :tipo', { tipo: 'venta' })
+            .andWhere('nota.estado_nota != :estado', { estado: 'ANULADA' })
+            .andWhere('nota.fecha BETWEEN :start AND :end', { start, end });
+
+        if (search) {
+            query.andWhere('(cliente.razon_social ILIKE :search OR cliente.ci_nit_ruc_rut ILIKE :search)', { search: `%${search}%` });
+        }
+
+        const stats = await query
+            .groupBy('cliente.id')
+            .orderBy('"purchaseCount"', 'DESC')
+            .limit(10)
+            .getRawMany();
+
+        return stats.map(stat => ({
+            clientId: stat.clientId || 0,
+            clientName: stat.clientName || 'VENTA GENERAL',
+            clientNit: stat.clientNit || '0',
+            totalSpent: parseFloat(stat.totalSpent),
+            purchaseCount: parseInt(stat.purchaseCount, 10),
+            averageTicket: parseFloat(stat.totalSpent) / parseInt(stat.purchaseCount, 10)
+        }));
+    }
 }

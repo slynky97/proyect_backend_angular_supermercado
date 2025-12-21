@@ -55,6 +55,15 @@ export class AnalyticsController {
     getStockoutPrediction(@Query('days') days: number) {
         return this.analyticsService.getStockoutPrediction(days ? Number(days) : 30);
     }
+    @Get('client-analytics')
+    getClientAnalytics(
+        @Query('startDate') startDate: string,
+        @Query('endDate') endDate: string,
+        @Query('search') search: string
+    ) {
+        return this.analyticsService.getClientAnalytics(startDate, endDate, search);
+    }
+
     @Get('product-history')
     getProductSalesHistory(
         @Query('productId') productId: number,

@@ -19,13 +19,13 @@ export class AuthService {
         // Buscar el usuario por su email
         const usuario = await this.userService.findOneByEmail(email);
         if(!usuario){
-            return new HttpException('Usuario no encontrado', 404);
+            throw new HttpException('Usuario no encontrado', 404);
         }
 
         // verificar la contraseña
         const verificarPass = await compare(password, usuario.password);
         if(!verificarPass){
-            return new HttpException('password incorrecto', 401);
+            throw new HttpException('password incorrecto', 401);
         }
 
         // generar JWT

@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { EmailService } from './email.service';
 import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource } from 'typeorm';
+import { DataSource, Between } from 'typeorm';
 import { Nota } from '../nota/entities/nota.entity';
 
 @Injectable()
@@ -12,37 +12,46 @@ export class NotificationSchedulerService {
         @InjectDataSource() private readonly dataSource: DataSource,
     ) { }
 
-    @Cron('0 0 * * *') // Run at midnight every day
-    async handleDailySummary() {
-        console.log('Running daily sales summary...');
-        const today = new Date();
-        // We want the summary of the *previous* day since it runs at midnight (start of new day)
-        // Or we can run it at 23:59.
-        // If running at 00:00, we should look at "yesterday".
-        // Let's look at the previous 24 hours.
+    async processDailySummary(date: Date) {
+        console.log(`Processing daily sales summary for ${date.toISOString()}...`);
 
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        yesterday.setHours(0, 0, 0, 0);
+        const startOfDay = new Date(date);
+        startOfDay.setHours(0, 0, 0, 0);
 
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(date);
+        endOfDay.setHours(23, 59, 59, 999);
 
-        const result = await this.dataSource
+        console.log(`Querying sales from ${startOfDay.toISOString()} to ${endOfDay.toISOString()}`);
+
+        const sales = await this.dataSource
             .getRepository(Nota)
-            .createQueryBuilder('nota')
-            .where('nota.fecha >= :start', { start: yesterday })
-            .andWhere('nota.fecha < :end', { end: todayStart })
-            .andWhere('nota.tipo_nota = :tipo', { tipo: 'venta' })
-            .select('SUM(nota.total_calculado)', 'totalRevenue')
-            .addSelect('COUNT(nota.id)', 'totalSales')
-            .getRawOne();
+            .find({
+                where: {
+                    fecha: Between(startOfDay, endOfDay),
+                    tipo_nota: 'venta',
+                },
+                relations: ['movimientos', 'movimientos.producto', 'user'],
+                order: {
+                    fecha: 'DESC' // Show latest sales first
+                }
+            });
 
-        const totalRevenue = parseFloat(result.totalRevenue || '0');
-        const totalSales = parseInt(result.totalSales || '0', 10);
+        console.log(`Found ${sales.length} sales for ${startOfDay.toLocaleDateString()}.`);
+
+        const totalRevenue = sales.reduce((sum, sale) => sum + Number(sale.total_calculado), 0);
+        const totalSales = sales.length;
 
         if (totalSales > 0) {
-            await this.emailService.sendDailySummary(totalRevenue, totalSales);
+            await this.emailService.sendDailySummary(totalRevenue, totalSales, sales);
+            return { success: true, count: totalSales, revenue: totalRevenue, message: 'Email sent' };
+        } else {
+            console.log('No sales found for this date, skipping email.');
+            return { success: false, count: 0, message: 'No sales found' };
         }
+    }
+
+    @Cron('59 23 * * *') // Run at 11:59 PM every day
+    async handleDailySummary() {
+        await this.processDailySummary(new Date());
     }
 }

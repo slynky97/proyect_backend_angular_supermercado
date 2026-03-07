@@ -147,7 +147,7 @@ export class EmailService {
             doc.end();
         });
     }
-    async sendDailySummary(totalRevenue: number, totalSales: number) {
+    async sendDailySummary(totalRevenue: number, totalSales: number, sales: Nota[]) {
         const subject = `📊 Resumen Diario de Ventas - ${new Date().toLocaleDateString()}`;
         const html = `
             <h1>Resumen del Día</h1>
@@ -159,7 +159,7 @@ export class EmailService {
         `;
         if (process.env.SMTP_USER) {
             try {
-                const pdfBuffer = await this.generateDailyReportPdf(totalRevenue, totalSales);
+                const pdfBuffer = await this.generateDailyReportPdf(totalRevenue, totalSales, sales);
                 return this.transporter.sendMail({
                     from: `"Supermercado Garcia" <${process.env.SMTP_USER}>`,
                     to: process.env.SMTP_USER,
@@ -179,7 +179,7 @@ export class EmailService {
         }
     }
 
-    private generateDailyReportPdf(totalRevenue: number, totalSales: number): Promise<Buffer> {
+    private generateDailyReportPdf(totalRevenue: number, totalSales: number, sales: Nota[]): Promise<Buffer> {
         return new Promise((resolve, reject) => {
             const doc = new PDFDocument({ size: 'A4', margin: 50 });
             const buffers: Buffer[] = [];
@@ -188,30 +188,83 @@ export class EmailService {
             doc.on('end', () => resolve(Buffer.concat(buffers)));
             doc.on('error', reject);
 
-            // Header
-            doc.fontSize(24).text('Supermercado Garcia', { align: 'center' });
-            doc.fontSize(16).text('Resumen Diario de Ventas', { align: 'center' });
+            const generateHeader = () => {
+                doc.fontSize(20).text('Supermercado Garcia', { align: 'center' });
+                doc.fontSize(14).text('Resumen Diario de Ventas', { align: 'center' });
+                doc.fontSize(10).text(`Fecha del Reporte: ${new Date().toLocaleDateString()}`, { align: 'center' });
+                doc.moveDown();
+            };
+
+            generateHeader();
+
+            // Summary Box
+            const summaryY = doc.y;
+            doc.rect(100, summaryY, 400, 80).stroke();
+            doc.fontSize(12).text(`Total Ventas: ${totalSales}`, 120, summaryY + 20);
+            doc.fontSize(14).fillColor('green').text(`Ingresos: Bs. ${totalRevenue.toFixed(2)}`, 120, summaryY + 45);
+            doc.fillColor('black');
+            doc.y = summaryY + 100;
+
+            doc.fontSize(12).text('Detalle de Ventas', { underline: true });
             doc.moveDown();
 
-            // Date
-            doc.fontSize(12).text(`Fecha del Reporte: ${new Date().toLocaleDateString()}`, { align: 'center' });
-            doc.moveDown();
-            doc.moveDown();
+            let y = doc.y;
 
-            // Content Box
-            doc.rect(100, 200, 400, 150).stroke();
+            // Table Header
+            const drawTableHeader = (yPos: number) => {
+                doc.fontSize(9).font('Helvetica-Bold');
+                doc.text('Producto', 50, yPos, { width: 200 });
+                doc.text('Cant.', 250, yPos, { width: 40, align: 'right' });
+                doc.text('P.Unit', 300, yPos, { width: 60, align: 'right' });
+                doc.text('Total', 370, yPos, { width: 60, align: 'right' });
+                doc.text('Vendedor', 440, yPos, { width: 100, align: 'left' });
+                doc.moveTo(50, yPos + 12).lineTo(540, yPos + 12).stroke();
+                doc.font('Helvetica');
+                return yPos + 20;
+            };
 
-            doc.fontSize(14).text('Resultados del Día', 100, 220, { width: 400, align: 'center' });
+            y = drawTableHeader(y);
 
-            doc.fontSize(12).text(`Total Ventas Realizadas:`, 150, 260);
-            doc.fontSize(14).text(`${totalSales}`, 350, 260, { align: 'right', width: 100 });
+            sales.forEach((sale) => {
+                if (doc.y > 700) {
+                    doc.addPage();
+                    generateHeader();
+                    y = drawTableHeader(doc.y);
+                }
 
-            doc.fontSize(12).text(`Ingresos Totales:`, 150, 300);
-            doc.fontSize(18).fillColor('green').text(`Bs. ${totalRevenue.toFixed(2)}`, 300, 295, { align: 'right', width: 150 });
-            doc.fillColor('black'); // Reset color
+                // Sale Header (ID and Time)
+                doc.fontSize(8).fillColor('gray');
+                doc.text(`Venta #${sale.id} - ${new Date(sale.fecha).toLocaleTimeString()}`, 50, y);
+                doc.fillColor('black');
+                y += 12;
 
-            // Footer
-            doc.fontSize(10).text('Este es un reporte generado automáticamente.', 50, 700, { align: 'center', width: 500 });
+                if (sale.movimientos) {
+                    sale.movimientos.forEach(mov => {
+                        if (doc.y > 720) {
+                            doc.addPage();
+                            generateHeader();
+                            y = drawTableHeader(doc.y);
+                            // Re-print sale header on new page if split? Maybe overkill, keep simple.
+                        }
+
+                        const productName = mov.producto ? mov.producto.nombre : 'Desconocido';
+                        const quantity = mov.cantidad;
+                        const price = Number(mov.precio_unitario_venta || 0).toFixed(2);
+                        const total = Number(mov.total_calculado || 0).toFixed(2);
+                        const seller = sale.user ? sale.user.name : 'N/A';
+
+                        doc.fontSize(9);
+                        doc.text(productName, 50, y, { width: 200 });
+                        doc.text(quantity.toString(), 250, y, { width: 40, align: 'right' });
+                        doc.text(price, 300, y, { width: 60, align: 'right' });
+                        doc.text(total, 370, y, { width: 60, align: 'right' });
+                        doc.text(seller, 440, y, { width: 100, align: 'left' });
+
+                        y += 14;
+                    });
+                }
+                y += 5; // Space between sales
+            });
 
             doc.end();
         });

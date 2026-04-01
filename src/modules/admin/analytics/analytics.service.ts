@@ -408,35 +408,29 @@ export class AnalyticsService {
             const currentStock = parseFloat(item.currentStock);
             const totalSold = salesMap.get(productId) || 0;
 
-            if (totalSold > 0) {
-                const dailyVelocity = totalSold / daysToAnalyze;
-                const daysLeft = currentStock / dailyVelocity;
+            const dailyVelocity = totalSold / daysToAnalyze;
+            const daysLeft = dailyVelocity > 0 ? (currentStock / dailyVelocity) : 999;
 
-                // Calculate suggested purchase to cover 30 days
-                // Only suggest if we have less than 30 days coverage
-                const targetCoverageDays = 30;
-                let suggestedPurchase = 0;
+            // Calculate suggested purchase to cover 30 days
+            // Only suggest if we have less than 30 days coverage
+            const targetCoverageDays = 30;
+            let suggestedPurchase = 0;
 
-                if (daysLeft < targetCoverageDays) {
-                    const diffDays = targetCoverageDays - daysLeft;
-                    // Or simply: (Target - Current) -> (Velocity * TargetDays) - CurrentStock
-                    suggestedPurchase = Math.ceil((dailyVelocity * targetCoverageDays) - currentStock);
-                    if (suggestedPurchase < 0) suggestedPurchase = 0;
-                }
-
-                // Only care if it runs out relatively soon (e.g. within 60 days)
-                // if (daysLeft <= 60) {
-                predictions.push({
-                    productId,
-                    productName: item.productName,
-                    productImage: item.productImage,
-                    currentStock,
-                    dailyVelocity,
-                    daysLeft: Math.round(daysLeft),
-                    suggestedPurchase
-                });
-                // }
+            if (daysLeft < targetCoverageDays) {
+                // Or simply: (Target - Current) -> (Velocity * TargetDays) - CurrentStock
+                suggestedPurchase = Math.ceil((dailyVelocity * targetCoverageDays) - currentStock);
+                if (suggestedPurchase < 0) suggestedPurchase = 0;
             }
+
+            predictions.push({
+                productId,
+                productName: item.productName,
+                productImage: item.productImage,
+                currentStock,
+                dailyVelocity,
+                daysLeft: Math.round(daysLeft),
+                suggestedPurchase
+            });
         }
 
         // 3. Sort by Risk (fewer days left = higher risk)

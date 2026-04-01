@@ -31,9 +31,7 @@ export class ClienteService {
   }
 
   async findAll() {
-    return await this.clienteRepo.find({
-      where: { estado: true }
-    });
+    return await this.clienteRepo.find();
   }
 
   async findOne(id: number) {
